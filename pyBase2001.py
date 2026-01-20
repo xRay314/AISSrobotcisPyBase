@@ -70,12 +70,13 @@ def yawTurn(speed1, speed2, speed3, angle, motorSplit, checkNegative):
 
 async def main():
     # write your code here
+    motion_sensor.reset_yaw(0)## reset yaw
     gyroFwd(600, 1000, 0, 0) ##Start
     gyroFwd(500, 1000, 900, 0)
     gyroFwd(500,1000,1800, 1)
     gyroFwd(500,1000, -900, -1)
     gyroFwd(500, 1000, 0, 0)
-    motor_pair.stop(motor_pair.PAIR_1)
+    motor_pair.stop(motor_pair.PAIR_1)##stop
 
     yawTurn(1000,1000,1000, -900, 1, 0) ##Turn to grab RSMP
 
