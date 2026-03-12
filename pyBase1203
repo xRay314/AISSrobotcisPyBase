@@ -1,0 +1,89 @@
+from hub import light_matrix, motion_sensor, port
+from app import display
+import runloop
+import motor
+import motor_pair
+
+motor_pair.pair(motor_pair.PAIR_1, port.A, port.E)
+
+kplf=0.5
+kp = 2
+checkNegative = 0
+
+
+##FUNCTIONS
+
+##Yaw Adjust
+def yawAngle(check):
+    yaw = motion_sensor.tilt_angles()[0]
+
+    if check == 1 and yaw < 0:
+        return yaw + 3600
+    elif check == -1 and yaw > 0:
+        return yaw - 3600
+    else:
+        return yaw
+
+## reset relative pos
+def resetRelativePos():
+    motor.reset_relative_position(port.E,0)
+    motor.reset_relative_position(port.A,0)
+
+##Find tDegrees
+
+def tDegrees():
+    return (motor.relative_position(port.E) + motor.relative_position(port.A))/2
+##GyroFwd
+
+def gyroMove(degrees, speed, targetAngle):
+    resetRelativePos()
+
+    while not tDegrees()>=degrees: ## Wait until traveled specified degrees
+        currentAngle = yawAngle(checkNegative) ## Get yaw
+        error = currentAngle - targetAngle ## Find error
+        proportional = error*kp ## Calculate Proportional
+        correction = proportional ## Calculate Correction
+        motor_pair.move_tank(motor_pair.PAIR_1, speed+correction, speed-correction) ##Set speed
+
+
+##gyro rmp fwd
+def gyroRmpFwd(degrees, speed1, speed2, targetAngle, checkNegative):
+    resetRelativePos()
+
+    speedDiff=speed2-speed1
+    while not tDegrees()>=degrees: ## Wait until traveled specified degrees
+    ##while abs(tDegrees())<degrees:
+        currentAngle = yawAngle(checkNegative) ## Get yaw
+        error = currentAngle - targetAngle ## Find error
+        proportional = error*kp ## Calculate Proportional
+        correction = proportional ## Calculate Correction
+        speed = speed1+(speedDiff*(motor.relative_position(port.E)/degrees))
+        motor_pair.move_tank(motor_pair.PAIR_1, speed+correction, speed-correction) ##Set speed
+
+##Yaw Turn
+
+def yawTurn(maxSpeed, minSpeed, angle, motorSplit, tolerance) :
+    speedDiff = maxSpeed - minSpeed
+    error = angle-yawAngle(checkNegative)
+    speed = maxSpeed
+    while not abs(error) < tolerance :
+        currentAngle = yawAngle(checkNegative)
+        error = angle-currentAngle
+        speed = minSpeed+speedDiff*(error/angle)
+        if maxSpeed * angle > 0:
+            motor_pair.move_tank(motor_pair.PAIR_1, speed, speed * motorSplit)
+        else:
+            motor_pair.move_tank(motor_pair.PAIR_1, speed * motorSplit, speed)
+
+async def main():
+    # write your code here
+    motion_sensor.reset_yaw(0)## reset yaw
+    gyroMove(200, 1000, 0)
+    yawTurn(1000, 500, -900, 0.4, 150)
+    gyroMove(200, 500, -900)
+    checkNegative = -1
+    yawTurn(500, 500, -1800, 0.4, 150)
+    gyroMove(400, 500, -1800)
+    motor_pair.stop(motor_pair.PAIR_1)
+
+runloop.run(main())
